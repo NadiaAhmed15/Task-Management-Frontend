@@ -23,6 +23,7 @@ const Todo = ({ toast, todo, setTodo }) => {
 
     const fetchTodos = async () => {
       const token = localStorage.getItem("token");
+      console.log("Sending Token:", token);
 
       if (!token) {
         toast.error("User not logged in");
@@ -34,17 +35,11 @@ const Todo = ({ toast, todo, setTodo }) => {
           headers: { Authorization: `Bearer ${token}` },
         });
 
+        console.log("Fetched Todos:", res.data);
         setTodo(res.data);
       } catch (err) {
         console.error("Error fetching todos:", err);
-
-        if (err.response?.status === 401) {
-          toast.error("Session expired. Please log in again.");
-          localStorage.removeItem("token");
-          window.location.href = "/login";
-        } else {
-          toast.error(err.response?.data?.error || "Failed to fetch todos");
-        }
+        toast.error(err.response?.data?.error || "Failed to fetch todos");
       }
     };
 
@@ -53,69 +48,26 @@ const Todo = ({ toast, todo, setTodo }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (newItem.trim() === "") {
-      toast.error("Please type something");
-      return;
-    }
+    if (!newItem.trim()) return toast.error("Please type something");
 
-    const newTodoItem = {
-      todoId: crypto.randomUUID(),
-      title: newItem,
-      status: false,
-    };
+    const newTodoItem = { todoId: crypto.randomUUID(), title: newItem, status: false };
 
     const token = localStorage.getItem("token");
-    if (!token) {
-      toast.error("User not logged in");
-      return;
-    }
+    if (!token) return toast.error("User not logged in");
 
     try {
       await axios.post(`${SERVER_URL}/todo/postTodo`, newTodoItem, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      setTodo((current) => [...current, newTodoItem]);
+      setTodo([...todo, newTodoItem]);
       toast.success("Added Successfully");
       setNewItem("");
     } catch (err) {
       console.error("Error adding todo:", err);
-      toast.error(err.response?.data?.error || "Failed to add todo");
-
-      if (err.response?.status === 401) {
-        localStorage.removeItem("token");
-        window.location.href = "/login";
-      }
+      toast.error("Failed to add todo");
     }
   };
-
-  function tickTodo(todoId, status) {
-    setTodo((current) =>
-      current.map((todo) =>
-        todo.todoId === todoId ? { ...todo, status } : todo
-      )
-    );
-
-    const token = localStorage.getItem("token");
-    axios
-      .patch(
-        `${SERVER_URL}/todo/updateTodo/${todoId}`,
-        { status },
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
-      .catch((err) => console.error("Error updating todo:", err));
-  }
-
-  function deleteTodo(todoId) {
-    const token = localStorage.getItem("token");
-    axios
-      .delete(`${SERVER_URL}/todo/deleteTodo/${todoId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .catch((err) => console.error("Error deleting todo:", err));
-
-    setTodo((current) => current.filter((todo) => todo.todoId !== todoId));
-  }
 
   return (
     <div className="main-form" data-aos="zoom-in">
@@ -141,26 +93,6 @@ const Todo = ({ toast, todo, setTodo }) => {
         />
         <button id="add-todo">ADD </button>
       </form>
-      <div className="item-list" data-aos="zoom-out">
-        <ul>
-          {todo.length === 0 && <h3 id="no-todo">No Reminders</h3>}
-          {filteredItems.map((todo) => (
-            <li key={todo.todoId}>
-              <label className="item-name">
-                <input
-                  type="checkbox"
-                  checked={todo.status}
-                  onChange={(e) => tickTodo(todo.todoId, e.target.checked)}
-                />
-                {todo.title}
-              </label>
-              <button id="del-bt" onClick={() => deleteTodo(todo.todoId)}>
-                <AiFillDelete size={20} color="#FF6969" />
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
     </div>
   );
 };
