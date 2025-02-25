@@ -18,6 +18,7 @@ export default function Mainpage({ toast, signIn, user }) {
   const fbAuth = () => {
     window.open(`${SERVER_URL}/facebook`, "_self");
   };
+
   const openForgotPass = () => {
     navigate("/forgotpass");
   };
@@ -35,7 +36,9 @@ export default function Mainpage({ toast, signIn, user }) {
       [e.target.name]: e.target.value,
     });
   }
+
   axios.defaults.withCredentials = true;
+
   const handleLogin = (e) => {
     e.preventDefault();
     if (userLogin.email === "" || userLogin.password === "") {
@@ -47,9 +50,17 @@ export default function Mainpage({ toast, signIn, user }) {
       .then((result) => {
         console.log(result);
         if (result.data.success) {
-          toast.success("Login successfully");
-          user = false;
-          navigate("/Home");
+          // Assuming your backend sends back a token in result.data.token
+          const token = result.data.token;
+          if (token) {
+            localStorage.setItem("token", token);
+            toast.success("Login successfully");
+            // Optionally, update the user state here if needed
+            // user = false; // Note: updating props directly isn't recommended
+            navigate("/Home");
+          } else {
+            toast.error("Token not received from server");
+          }
         } else {
           toast.error("Enter the correct details");
           setUserLogin({ email: "", password: "" });
@@ -57,13 +68,13 @@ export default function Mainpage({ toast, signIn, user }) {
       })
       .catch((err) => {
         console.log(err);
+        toast.error("Login failed");
       });
     setUserLogin({ email: "", password: "" });
   };
 
   const handleRegister = (e) => {
     e.preventDefault();
-       
     axios
       .post(`${SERVER_URL}/register`, users)
       .then((result) => {
@@ -86,7 +97,6 @@ export default function Mainpage({ toast, signIn, user }) {
       <div className="form-container sign-up">
         <form method="POST" action="/" onSubmit={(e) => handleRegister(e)}>
           <h1>Create Account</h1>
-        
           <input
             type="text"
             placeholder="Username"
@@ -120,7 +130,6 @@ export default function Mainpage({ toast, signIn, user }) {
       <div className="form-container sign-in">
         <form method="POST" action="/" onSubmit={(e) => handleLogin(e)}>
           <h1>Sign In</h1>
-        
           <input
             type="email"
             name="email"
