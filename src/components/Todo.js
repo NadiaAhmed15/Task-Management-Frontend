@@ -12,12 +12,6 @@ const Todo = ({ toast, todo, setTodo }) => {
   const [searchQuery, setSearchQuery] = useState("");
   axios.defaults.withCredentials = true;
 
-  // Add Authorization Headers to All Requests
-  const authHeader = {
-    headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-  };
-
-  // Filtered todos based on search query
   const filteredItems = useMemo(() => {
     return todo.filter((eachItem) =>
       eachItem.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -27,18 +21,22 @@ const Todo = ({ toast, todo, setTodo }) => {
   useEffect(() => {
     Aos.init({ duration: 1000 });
 
-    // Fetch Todos with Authorization
+    const token = localStorage.getItem("token");
+    if (!token) {
+      toast.error("User not logged in");
+      return;
+    }
+
     axios
-      .get(`${SERVER_URL}/todo/getTodo`, authHeader)
-      .then((res) => {
-        console.log("Fetched Todos:", res.data);
-        setTodo(res.data);
+      .get(`${SERVER_URL}/todo/getTodo`, {
+        headers: { Authorization: `Bearer ${token}` },
       })
+      .then((res) => setTodo(res.data))
       .catch((err) => {
         console.error("Error fetching todos:", err);
-        toast.error("Failed to fetch todos");
+        toast.error(err.response?.data?.error || "Failed to fetch todos");
       });
-  }, [setTodo]);
+  }, [setTodo, toast]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -53,61 +51,53 @@ const Todo = ({ toast, todo, setTodo }) => {
       status: false,
     };
 
+    const token = localStorage.getItem("token");
+    if (!token) {
+      toast.error("User not logged in");
+      return;
+    }
+
     try {
-      // Send POST request and wait for confirmation before updating state
-      const res = await axios.post(
-        `${SERVER_URL}/todo/postTodo`,
-        newTodoItem,
-        authHeader
-      );
-      console.log("Todo added:", res.data);
+      await axios.post(`${SERVER_URL}/todo/postTodo`, newTodoItem, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-      // Update UI after successful backend update
       setTodo((current) => [...current, newTodoItem]);
-
       toast.success("Added Successfully");
       setNewItem("");
     } catch (err) {
       console.error("Error adding todo:", err);
-      toast.error("Failed to add todo");
+      toast.error(err.response?.data?.error || "Failed to add todo");
     }
   };
 
-  const tickTodo = async (todoId, status) => {
-    try {
-      // Optimistically update the UI
-      setTodo((current) =>
-        current.map((todo) =>
-          todo.todoId === todoId ? { ...todo, status } : todo
-        )
-      );
+  function tickTodo(todoId, status) {
+    setTodo((current) =>
+      current.map((todo) =>
+        todo.todoId === todoId ? { ...todo, status } : todo
+      )
+    );
 
-      // Send PATCH request to backend
-      await axios.patch(
+    const token = localStorage.getItem("token");
+    axios
+      .patch(
         `${SERVER_URL}/todo/updateTodo/${todoId}`,
         { status },
-        authHeader
-      );
-      console.log(`Todo ${todoId} updated to ${status}`);
-    } catch (err) {
-      console.error("Error updating todo:", err);
-      toast.error("Failed to update todo");
-    }
-  };
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      .catch((err) => console.error("Error updating todo:", err));
+  }
 
-  const deleteTodo = async (todoId) => {
-    try {
-      await axios.delete(`${SERVER_URL}/todo/deleteTodo/${todoId}`, authHeader);
+  function deleteTodo(todoId) {
+    const token = localStorage.getItem("token");
+    axios
+      .delete(`${SERVER_URL}/todo/deleteTodo/${todoId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .catch((err) => console.error("Error deleting todo:", err));
 
-      // Remove deleted item from state
-      setTodo((current) => current.filter((todo) => todo.todoId !== todoId));
-
-      toast.success("Deleted Successfully");
-    } catch (err) {
-      console.error("Error deleting todo:", err);
-      toast.error("Failed to delete todo");
-    }
-  };
+    setTodo((current) => current.filter((todo) => todo.todoId !== todoId));
+  }
 
   return (
     <div className="main-form" data-aos="zoom-in">
@@ -123,21 +113,19 @@ const Todo = ({ toast, todo, setTodo }) => {
           <BiSearchAlt2 size={22} />
         </button>
       </div>
-
       <form onSubmit={handleSubmit} className="form-row">
         <input
           value={newItem}
           onChange={(e) => setNewItem(e.target.value)}
           type="text"
           className="todo-ip"
-          placeholder="New Reminder"
+          placeholder="New Remainder"
         />
-        <button id="add-todo">ADD</button>
+        <button id="add-todo">ADD </button>
       </form>
-
       <div className="item-list" data-aos="zoom-out">
         <ul>
-          {todo.length === 0 && <h3 id="no-todo">No Reminders</h3>}
+          {todo.length === 0 && <h3 id="no-todo">No Remainders</h3>}
           {filteredItems.map((todo) => (
             <li key={todo.todoId}>
               <label className="item-name">
