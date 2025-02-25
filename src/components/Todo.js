@@ -21,21 +21,34 @@ const Todo = ({ toast, todo, setTodo }) => {
   useEffect(() => {
     Aos.init({ duration: 1000 });
 
-    const token = localStorage.getItem("token");
-    if (!token) {
-      toast.error("User not logged in");
-      return;
-    }
+    const fetchTodos = async () => {
+      const token = localStorage.getItem("token");
 
-    axios
-      .get(`${SERVER_URL}/todo/getTodo`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then((res) => setTodo(res.data))
-      .catch((err) => {
+      if (!token) {
+        toast.error("User not logged in");
+        return;
+      }
+
+      try {
+        const res = await axios.get(`${SERVER_URL}/todo/getTodo`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        setTodo(res.data);
+      } catch (err) {
         console.error("Error fetching todos:", err);
-        toast.error(err.response?.data?.error || "Failed to fetch todos");
-      });
+
+        if (err.response?.status === 401) {
+          toast.error("Session expired. Please log in again.");
+          localStorage.removeItem("token");
+          window.location.href = "/login";
+        } else {
+          toast.error(err.response?.data?.error || "Failed to fetch todos");
+        }
+      }
+    };
+
+    fetchTodos();
   }, [setTodo, toast]);
 
   const handleSubmit = async (e) => {
@@ -68,6 +81,11 @@ const Todo = ({ toast, todo, setTodo }) => {
     } catch (err) {
       console.error("Error adding todo:", err);
       toast.error(err.response?.data?.error || "Failed to add todo");
+
+      if (err.response?.status === 401) {
+        localStorage.removeItem("token");
+        window.location.href = "/login";
+      }
     }
   };
 
@@ -119,13 +137,13 @@ const Todo = ({ toast, todo, setTodo }) => {
           onChange={(e) => setNewItem(e.target.value)}
           type="text"
           className="todo-ip"
-          placeholder="New Remainder"
+          placeholder="New Reminder"
         />
         <button id="add-todo">ADD </button>
       </form>
       <div className="item-list" data-aos="zoom-out">
         <ul>
-          {todo.length === 0 && <h3 id="no-todo">No Remainders</h3>}
+          {todo.length === 0 && <h3 id="no-todo">No Reminders</h3>}
           {filteredItems.map((todo) => (
             <li key={todo.todoId}>
               <label className="item-name">
