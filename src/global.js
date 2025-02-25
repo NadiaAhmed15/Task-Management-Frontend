@@ -1,2 +1,2 @@
-export const SERVER_URL = "http://localhost:5020";
-// export const SERVER_URL = "https://nadia-project-backend.vercel.app";
+// export const SERVER_URL = "http://localhost:5020";
+export const SERVER_URL = "https://task-management-backend-sepia.vercel.app";
